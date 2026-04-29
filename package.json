@@ -1,0 +1,19 @@
+{
+  "name": "platform-test-engineer-tech-test",
+  "version": "1.0.0",
+  "scripts": {
+    "app:start": "node src/server.js",
+    "test": "npx playwright test",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:wait": "npx wait-on http://localhost:3000/health --timeout 30000"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "express-session": "^1.18.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.0",
+    "wait-on": "^8.0.0"
+  }
+}
