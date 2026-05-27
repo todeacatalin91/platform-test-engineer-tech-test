@@ -13,8 +13,8 @@ export default defineConfig({
 
   // In CI, accidentally committed test.only() must fail the build.
   forbidOnly: isCI,
-  // In CI, retry flaky tests up to twice before marking the job failed.
-  retries: isCI ? 2 : 0,
+  // One retry in CI (fewer duplicate folders in test-results); trace captured on that retry.
+  retries: isCI ? 1 : 0,
   // Single worker avoids cross-test interference on one shared app instance.
   workers: 1,
 
