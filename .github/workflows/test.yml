@@ -1,5 +1,7 @@
+# UI test pipeline for TaskFlow: runs on every PR and on pushes to main.
 name: Test Suite
 
+# Step 1 — Trigger: run when a PR targets main, or when main is pushed directly.
 on:
   push:
     branches: [main]
@@ -9,9 +11,61 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      # Fresh runner: clone the repo so we can install deps and run tests.
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
+      # Step 2 — Node 20: install the Node runtime required by the project (see README).
+      # cache: npm restores downloaded packages from prior runs (keyed on package-lock.json)
+      # so npm ci is faster; installs remain deterministic via the lockfile.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      # Step 3 — Dependencies: install exact versions from package-lock.json (reproducible CI).
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      # Step 4 — Browser: Playwright npm package does not include Chromium; download it plus
+      # Linux system libraries (--with-deps) so headless tests can run on ubuntu-latest.
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      # Step 5 — Application: build and start TaskFlow in Docker (same as local docker:up).
+      # The app listens on localhost:3000 on the runner host (port mapped from the container).
+      - name: Start application (Docker)
+        run: npm run docker:up
+
+      # Step 6 — Ready: do not run tests until the server is up (avoids connection refused).
+      # 120s allows for first-time Docker image build in CI, which is slower than locally.
+      - name: Wait for application health
+        run: npx wait-on http://localhost:3000/health --timeout 120000
+
+      # Step 7 — Tests: run the Playwright suite against http://localhost:3000.
+      # CI=true enables stricter/friendlier CI settings in playwright.config.ts (retries, reports, traces).
+      - name: Run Playwright tests
+        run: npm test
+        env:
+          CI: true
+
+      # Step 8 — Artifacts (on failure only): upload HTML report and raw results so developers
+      # can see screenshots, traces, and junit without digging through the full job log.
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+      # Step 9 — Cleanup: stop containers even when tests fail (if: always).
+      - name: Stop application (Docker)
+        if: always()
+        run: npm run docker:down
