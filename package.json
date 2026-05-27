@@ -4,6 +4,10 @@
   "scripts": {
     "app:start": "node src/server.js",
     "test": "npx playwright test",
+    "test-auth": "npx playwright test tests/auth.spec.ts",
+    "test-filters": "npx playwright test tests/filters.spec.ts",
+    "test-tasks": "npx playwright test tests/tasks.spec.ts",
+    "test-users": "npx playwright test tests/users.spec.ts",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
     "docker:wait": "npx wait-on http://localhost:3000/health --timeout 30000"

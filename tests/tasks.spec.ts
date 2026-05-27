@@ -1,5 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { login, addTaskViaUI } from "./helpers/test-utils";
+import {
+  login,
+  addTaskViaUI,
+  clickTaskCheckbox,
+  countTasks,
+  taskItem,
+  taskItems,
+} from "./helpers/test-utils";
 
 test.describe("Task Management", () => {
   test.beforeEach(async ({ page }) => {
@@ -9,28 +16,32 @@ test.describe("Task Management", () => {
   });
 
   test("should add a new task", async ({ page }) => {
+    const countBefore = await countTasks(page);
+
     await addTaskViaUI(page, "Buy groceries", "medium");
 
-    const taskItem = page.locator("ul#task-list > li");
-    await expect(taskItem).toHaveCount(1);
-    await expect(taskItem.locator("span:nth-child(2)")).toHaveText("Buy groceries");
+    await expect(taskItems(page)).toHaveCount(countBefore + 1);
+    await expect(
+      taskItem(page, "Buy groceries").locator(".priority-badge.medium"),
+    ).toHaveText("medium");
   });
 
   test("should mark a task as completed", async ({ page }) => {
     await addTaskViaUI(page, "Test task");
-
-    await page.locator(".task-item input[type='checkbox']").click();
-    expect(
-      await page.locator(".task-item").getAttribute("class")
-    ).toContain("completed");
+    await clickTaskCheckbox(page, "Test task");
+    await expect(taskItem(page, "Test task")).toHaveClass(/completed/);
   });
 
   test("should delete a task", async ({ page }) => {
-    await addTaskViaUI(page, "Task to delete");
-    await expect(page.locator("ul > li")).toHaveCount(1);
+    const countBefore = await countTasks(page);
 
-    await page.locator("ul > li > button:last-child").click();
-    await expect(page.locator("ul > li")).toHaveCount(0);
+    await addTaskViaUI(page, "Task to delete");
+    
+    await expect(taskItems(page)).toHaveCount(countBefore + 1);
+
+    await page.locator(".task-item .delete-btn").last().click();
+
+    await expect(taskItems(page)).toHaveCount(countBefore);
   });
 
   test("should display correct task count", async ({ page }) => {

@@ -1,121 +1,132 @@
-# Platform Test Engineer - Tech Test
+# TaskFlow
 
-## Overview
+TaskFlow is a small task management web application with login, per-user task lists, priorities, and filters. This repository contains the Node.js server, the browser UI, and an automated end-to-end test suite (Playwright).
 
-This repository contains **TaskFlow**, a simple task management web app, along with an existing test suite and an incomplete CI/CD pipeline.
+## Features
 
-The development team is frustrated that their tickets keep coming back as failed QA after they have merged their changes and have asked the test platform team to run the UI tests on Pull request. They do not always remember to run them manual and have also expressed their frustration that the tests take too long to run and keep failing intermittently.
+- **Authentication** — Sign in to use the app; unauthenticated visits to the home page show the login screen. Sign out returns you to login.
+- **Tasks** — Create tasks with a title and priority (`low`, `medium`, `high`). Mark tasks complete, delete them, and see a count of active tasks vs total.
+- **Filtering** — View all tasks, only active, or only completed. The active filter is highlighted; an empty list shows a clear message when nothing matches.
+- **Multi-user** — Each user has their own tasks. Additional users can be created via the REST API (see below).
 
-Your task is to implement a working CICD workflow which runs the tests, provides clear feedback to the developer on why (if any) tests failed and make optimisations and fixes to the existing test suite.
+### Default account
 
-This exercise is designed to take approximately **2–3 hours**.
+| Field    | Value      |
+| -------- | ---------- |
+| Username | `admin`    |
+| Password | `admin123` |
 
----
+Open the app at [http://localhost:3000](http://localhost:3000) after starting the server (see below).
 
-## Getting Started
+## Tech stack
+
+- **Backend:** Express, session-based auth, in-memory data store
+- **Frontend:** Static HTML/CSS/JS (`src/views`, `src/public`)
+- **Tests:** Playwright (Chromium)
+- **CI:** GitHub Actions — Docker app + Playwright on pull requests and pushes to `main`
+
+For a full feature list, API table, and testing notes, see [`requirements.md`](requirements.md).
+
+## Getting started
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v20 or later)
-- [Docker](https://www.docker.com/) and Docker Compose
+- [Node.js](https://nodejs.org/) 20+
+- [Docker](https://www.docker.com/) and Docker Compose (optional, recommended for parity with CI)
 - Git
 
-### Setup
-
-1. Click the **"Use this template"** button at the top of this repository to create your own copy.
-2. **Clone** your new repository locally:
-   ```bash
-   git clone <your-repo-url>
-   cd platform-test-engineer-tech-test
-   ```
-3. **Install dependencies**:
-   ```bash
-   npm install
-   npx playwright install --with-deps chromium
-   ```
-4. **Start the app** using Docker:
-   ```bash
-   npm run docker:up
-   npm run docker:wait
-   ```
-   Or run locally without Docker:
-   ```bash
-   npm run app:start
-   ```
-5. **Visit** `http://localhost:3000` to see the app running.
-6. **Run the tests**:
-   ```bash
-   npm test
-   ```
-
-When finished, stop the app:
+### Install
 
 ```bash
-# If using Docker:
-npm run docker:down
-
-# If running locally, press Ctrl+C in the terminal
+git clone <your-repo-url>
+cd platform-test-engineer-tech-test
+npm install
+npx playwright install --with-deps chromium
 ```
 
----
+### Run the application
 
-## What to Do
+**With Docker:**
 
-Read [`requirements.md`](requirements.md) for full details on the app and test coverage. Below is a summary of the tasks
+```bash
+npm run docker:up
+npm run docker:wait
+```
 
-### Task 1: Build a working CI Pipeline
+**Without Docker:**
 
-The GitHub Actions workflow (`.github/workflows/test.yml`) is incomplete.
-The workflow should:
+```bash
+npm run app:start
+```
 
-- Run on pull requests
-- Spin up required infrastructure
-- Run the tests
-- Output relevent reports and artefacts
+The server listens on port **3000**. Health check: `GET http://127.0.0.1:3000/health`.
 
-### Task 2: Fix Broken Tests
+**Stop Docker:**
 
-Several existing tests are failing. Diagnose the root cause of each failure and fix them. The issues are in the tests, not the application.
+```bash
+npm run docker:down
+```
 
-### Task 3: Fix the Flaky Tests
+For a local `npm run app:start` process, stop it with Ctrl+C in the terminal.
 
-There are some flaky and brittle tests. Identify these test(s) and make them more reliable.
+### Run tests
 
-### Task 4: Improve Test Configuration
+Playwright uses `http://127.0.0.1:3000` as `baseURL`. Locally, if nothing is listening yet, the config can start the app via `npm run app:start`. In CI, the workflow starts the app in Docker first.
 
-The test runnger configuration is not optimised. Identify and implement ways to improve this to reduce development friction and increase feedback speed, while maintaining reliability.
+```bash
+npm test
+```
 
-### Task 5: Improve Test Execution Speed
+Run one area of the suite:
 
-Explore and implement ways of making the tests faster, think about data seeding and redundant UI commands.
+```bash
+npm run test-auth
+npm run test-tasks
+npm run test-filters
+npm run test-users
+```
 
-### Task 6: Write New Tests
+| Script            | Spec file              |
+| ----------------- | ---------------------- |
+| `npm run test-auth`    | `tests/auth.spec.ts`    |
+| `npm run test-tasks`   | `tests/tasks.spec.ts`   |
+| `npm run test-filters` | `tests/filters.spec.ts` |
+| `npm run test-users`   | `tests/users.spec.ts`   |
 
-Add tests for missing coverage of requirements described in `requirements.md`:
+Shared helpers live in `tests/helpers/test-utils.ts` (login, API seeding, task locators, waiting for list reloads).
 
----
+## REST API (summary)
 
-## Submitting
+| Method   | Endpoint           | Description                          |
+| -------- | ------------------ | ------------------------------------ |
+| `POST`   | `/api/login`       | Authenticate                         |
+| `POST`   | `/api/logout`      | End session                          |
+| `POST`   | `/api/users`       | Create a user                        |
+| `GET`    | `/api/tasks`       | List current user's tasks            |
+| `POST`   | `/api/tasks`       | Create a task                        |
+| `PATCH`  | `/api/tasks/:id`   | Update a task (e.g. completed)       |
+| `DELETE` | `/api/tasks/:id`   | Delete a task                        |
+| `POST`   | `/api/reset`       | Reset tasks and non-admin users (tests) |
+| `GET`    | `/health`          | Health check                         |
 
-1. Make the required changes and add any supporting documentation.
-2. Commit everything to your repository.
-3. Share the link to your repository with us.
+## Project layout
 
----
+```
+src/
+  server.js          # Express app and API
+  views/             # login.html, index.html
+  public/            # app.js, styles.css
+tests/
+  auth.spec.ts
+  tasks.spec.ts
+  filters.spec.ts
+  users.spec.ts
+  helpers/test-utils.ts
+.github/workflows/test.yml
+playwright.config.ts
+docker-compose.yml
+```
 
-## What We're Looking For
+## Continuous integration
 
-- **Diagnosis skills** - Can you identify why tests fail and fix the root cause, not just the symptom?
-- **Infrastructure thinking** - Do your CI and config changes make the suite reliable, fast, and maintainable?
-- **Test design** - Are your tests well-structured, readable, and appropriately scoped?
-- **DX awareness** - Do you utilise utility functions and scripts to make life easier for engineers writing and running tests?
-
-We're not looking for perfection - we want to see how you think about test infrastructure and how you approach problems.
-
-We encourage you to use AI tooling to enhance your workflow - however - it is important that you understand what you have done, why you've made the decisions you have and are able to reason about your approach
-
----
-
-## Time Guidance
-
-This exercise is designed to take **2–3 hours**. If you run out of time, submit what you have and note what you would do next - we value a clear, well-reasoned partial submission over a rushed complete one.
+On pull requests and pushes to `main`, the workflow installs dependencies, starts TaskFlow in Docker, waits for `/health`, runs `npm test` with `CI=true`, and uploads HTML reports and failure artifacts when tests fail.
