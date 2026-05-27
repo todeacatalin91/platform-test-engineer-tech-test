@@ -13,8 +13,8 @@ export default defineConfig({
 
   // In CI, accidentally committed test.only() must fail the build.
   forbidOnly: isCI,
-  // In CI, retry flaky tests up to twice before marking the job failed.
-  retries: isCI ? 2 : 0,
+  // One retry in CI (fewer duplicate folders in test-results); trace captured on that retry.
+  retries: isCI ? 1 : 0,
   // Single worker avoids cross-test interference on one shared app instance.
   workers: 1,
 
@@ -33,8 +33,19 @@ export default defineConfig({
   outputDir: "test-results",
 
   use: {
-    baseURL: "http://localhost:3000",
+    // Use explicit IPv4 to avoid localhost -> ::1 issues on some machines.
+    baseURL: "http://127.0.0.1:3000",
     trace: isCI ? "on-first-retry" : "off",
     screenshot: isCI ? "only-on-failure" : "off",
   },
+
+  // Local: start app if needed. CI: reuse Docker (workflow already exposes :3000).
+  webServer: isCI
+    ? undefined
+    : {
+        command: "npm run app:start",
+        url: "http://127.0.0.1:3000/health",
+        reuseExistingServer: true,
+        timeout: 10_000,
+      },
 });
